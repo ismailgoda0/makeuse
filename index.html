@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة المخزن</title>
+    <!-- تحميل Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- تحميل خط Cairo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- تحميل مكتبة Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+        }
+        .modal {
+            z-index: 50;
+        }
+        /* كلاس لإخفاء الصفحات */
+        .page {
+            display: none;
+        }
+        /* كلاس لإظهار الصفحة النشطة */
+        .page.active {
+            display: block;
+        }
+        /* إخفاء الأسهم في حقول الأرقام */
+        input[type='number']::-webkit-outer-spin-button,
+        input[type='number']::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type='number'] {
+            -moz-appearance: textfield;
+        }
+        /* (جديد) ستايل لسهم القائمة المنسدلة */
+        .toggle-arrow {
+            transition: transform 0.2s ease-in-out;
+        }
+        .toggle-arrow.collapsed {
+            transform: rotate(-90deg);
+        }
+        /* (جديد) ستايل مفتاح التبديل (Toggle Switch) */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 28px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #2563eb; /* Blue 600 */
+        }
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- 1. الصفحة الرئيسية -->
+    <div id="home-page" class="page active">
+        <div class="container mx-auto max-w-xl p-4 sm:p-10 min-h-screen flex flex-col justify-center items-center">
+            <h1 class="text-3xl sm:text-4xl font-bold text-center text-gray-800 mb-10">
+                <i class="fa-solid fa-warehouse text-blue-600"></i>
+                نظام إدارة المخزن
+            </h1>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
+                <!-- زر صفحة الاستلام -->
+                <button onclick="showPage('receiving-page')" class="flex flex-col items-center justify-center bg-blue-500 text-white p-8 rounded-lg shadow-lg hover:bg-blue-600 transition-all duration-200">
+                    <i class="fa-solid fa-dolly fa-3x mb-3"></i>
+                    <span class="block text-2xl font-semibold">صفحة الاستلام</span>
+                </button>
+                
+                <!-- زر صفحة الجرد -->
+                <button onclick="showPage('inventory-page'); initInventoryPage();" class="flex flex-col items-center justify-center bg-indigo-500 text-white p-8 rounded-lg shadow-lg hover:bg-indigo-600 transition-all duration-200">
+                    <i class="fa-solid fa-clipboard-list fa-3x mb-3"></i>
+                    <span class="block text-2xl font-semibold">صفحة الجرد</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. صفحة الاستلام -->
+    <div id="receiving-page" class="page">
+        <!-- زر الرجوع -->
+        <div class="bg-white shadow-sm sticky top-0 z-10">
+            <div class="container mx-auto max-w-3xl p-4">
+                <button onclick="showPage('home-page')" class="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-all">
+                    <i class="fa-solid fa-arrow-right"></i>
+                    <span>الرجوع إلى الرئيسية</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- (تعديل) تم حذف قسم "القوائم المحفوظة" من هنا -->
+
+        <!-- حاوية الحاسبة الرئيسية -->
+        <div class="container mx-auto max-w-3xl p-4 sm:p-6 bg-white rounded-lg shadow-lg my-5 mb-10">
+            
+            <h1 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-6 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-calculator text-blue-600"></i>
+                حاسبة استلام الخردة
+            </h1>
+
+            <!-- 1. قسم إضافة الأصناف الأساسية -->
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-3 text-gray-700">إضافة أصناف</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <!-- زر إضافة كيسة -->
+                    <button onclick="openCaseModal()" class="flex flex-col items-center justify-center bg-blue-500 text-white p-3 rounded-lg shadow-md hover:bg-blue-600 transition-all duration-200">
+                        <i class="fa-solid fa-server fa-2x mb-1"></i>
+                        <span class="block text-lg font-semibold">كيسة</span>
+                        <span class="block text-sm">(300 ج)</span>
+                    </button>
+                    <!-- زر إضافة تلفزيون -->
+                    <button onclick="addItem('tv')" class="flex flex-col items-center justify-center bg-green-500 text-white p-3 rounded-lg shadow-md hover:bg-green-600 transition-all duration-200">
+                        <i class="fa-solid fa-tv fa-2x mb-1"></i>
+                        <span class="block text-lg font-semibold">تلفزيون</span>
+                        <span class="block text-sm">(100 ج)</span>
+                    </button>
+                    <!-- زر إضافة شاشة -->
+                    <button onclick="addItem('monitor')" class="flex flex-col items-center justify-center bg-yellow-500 text-white p-3 rounded-lg shadow-md hover:bg-yellow-600 transition-all duration-200">
+                        <i class="fa-solid fa-desktop fa-2x mb-1"></i>
+                        <span class="block text-lg font-semibold">شاشة</span>
+                        <span class="block text-sm">(140 ج)</span>
+                    </button>
+                    <!-- زر إضافة لاب توب -->
+                    <button onclick="openLaptopModal()" class="flex flex-col items-center justify-center bg-purple-500 text-white p-3 rounded-lg shadow-md hover:bg-purple-600 transition-all duration-200">
+                        <i class="fa-solid fa-laptop fa-2x mb-1"></i>
+                        <span class="block text-lg font-semibold">لاب توب</span>
+                        <span class="block text-sm">(250 ج)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. قسم إضافة القطع الداخلية (كيسة) - (تعديل: قابل للطي) -->
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold mb-3 text-gray-600 flex justify-between items-center cursor-pointer" onclick="toggleCollapse('case-parts-section', 'case-parts-arrow')">
+                    <span class="flex items-center gap-2">
+                        <i id="case-parts-arrow" class="fa-solid fa-chevron-left toggle-arrow collapsed"></i>
+                        <span>إضافة قطع غيار (كيسة)</span>
+                    </span>
+                    <button onclick="openCustomItemModal(event)" class="bg-teal-500 text-white px-3 py-1 rounded-lg text-sm shadow-sm hover:bg-teal-600 transition-all flex items-center gap-1">
+                        <i class="fa-solid fa-plus"></i>
+                        إضافة صنف مخصص
+                    </button>
+                </h2>
+                <!-- (تعديل) إضافة ID و كلاس 'hidden' -->
+                <div id="case-parts-section" class="grid grid-cols-3 sm:grid-cols-4 gap-2 hidden">
+                    <!-- هارد -->
+                    <button onclick="addItem('hardDrive_standalone')" class="flex items-center justify-center gap-2 bg-gray-500 text-white p-2 rounded-lg shadow-sm hover:bg-gray-600 transition-all duration-200">
+                        <i class="fa-regular fa-hard-drive w-5 h-5"></i>
+                        <span class="block text-md font-semibold">هارد</span>
+                        <span class="block text-xs">(40 ج)</span>
+                    </button>
+                    <!-- رامات -->
+                    <button onclick="addItem('ram_standalone')" class="flex items-center justify-center gap-2 bg-gray-500 text-white p-2 rounded-lg shadow-sm hover:bg-gray-600 transition-all duration-200">
+                        <i class="fa-solid fa-memory w-5 h-5"></i>
+                        <span class="block text-md font-semibold">رامات</span>
+                        <span class="block text-xs">(25 ج)</span>
+                    </button>
+                    <!-- سي دي روم -->
+                    <button onclick="addItem('cdRom_standalone')" class="flex items-center justify-center gap-2 bg-gray-500 text-white p-2 rounded-lg shadow-sm hover:bg-gray-600 transition-all duration-200">
+                        <i class="fa-solid fa-compact-disc w-5 h-5"></i>
+                        <span class="block text-md font-semibold">سي دي</span>
+                        <span class="block text-xs">(25 ج)</span>
+                    </button>
+                    <!-- بوردة -->
+                    <button onclick="addItem('motherboard')" class="flex items-center justify-center gap-2 bg-gray-500 text-white p-2 rounded-lg shadow-sm hover:bg-gray-600 transition-all duration-200">
+                        <i class="fa-solid fa-microchip w-5 h-5"></i>
+                        <span class="block text-md font-semibold">بوردة</span>
+                        <span class="block text-xs">(35 ج)</span>
+                    </button>
+                    <!-- باور سبلاي -->
+                    <button onclick="addItem('powerSupply')" class="flex items-center justify-center gap-2 bg-gray-500 text-white p-2 rounded-lg shadow-sm hover:bg-gray-600 transition-all duration-200">
+                        <i class="fa-solid fa-plug w-5 h-5"></i>
+                        <span class="block text-md font-semibold">باور</span>
+                        <span class="block text-xs">(25 ج)</span>
+                    </button>
+                    <!-- فانة -->
+                    <button onclick="addItem('fan_standalone')" class="flex items-center justify-center gap-2 bg-gray-500 text-white p-2 rounded-lg shadow-sm hover:bg-gray-600 transition-all duration-200">
+                        <i class="fa-solid fa-fan w-5 h-5"></i>
+                        <span class="block text-md font-semibold">فانة</span>
+                        <span class="block text-xs">(20 ج)</span>
+                    </button>
+                    <!-- بروسيسور -->
+                    <button onclick="addItem('processor_standalone')" class="flex items-center justify-center gap-2 bg-gray-500 text-white p-2 rounded-lg shadow-sm hover:bg-gray-600 transition-all duration-200">
+                        <i class="fa-solid fa-microchip w-5 h-5"></i>
+                        <span class="block text-md font-semibold">بروسيسور</span>
+                        <span class="block text-xs">(10 ج)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- (جديد) قسم قطع غيار اللاب توب (تعديل: قابل للطي) -->
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold mb-3 text-gray-600 flex justify-between items-center cursor-pointer" onclick="toggleCollapse('laptop-parts-section', 'laptop-parts-arrow')">
+                    <span class="flex items-center gap-2">
+                        <i id="laptop-parts-arrow" class="fa-solid fa-chevron-left toggle-arrow collapsed"></i>
+                        <span>إضافة قطع غيار (لاب توب)</span>
+                    </span>
+                </h2>
+                <!-- (تعديل) إضافة ID و كلاس 'hidden' -->
+                <div id="laptop-parts-section" class="grid grid-cols-3 sm:grid-cols-5 gap-2 hidden">
+                    <!-- هارد لاب توب -->
+                    <button onclick="addItem('laptop_hardDrive_standalone')" class="flex items-center justify-center gap-2 bg-gray-600 text-white p-2 rounded-lg shadow-sm hover:bg-gray-700 transition-all duration-200">
+                        <i class="fa-regular fa-hard-drive w-5 h-5"></i>
+                        <span class="block text-md font-semibold">هارد لاب</span>
+                        <span class="block text-xs">(15 ج)</span>
+                    </button>
+                    <!-- رامات لاب توب -->
+                    <button onclick="addItem('laptop_ram_standalone')" class="flex items-center justify-center gap-2 bg-gray-600 text-white p-2 rounded-lg shadow-sm hover:bg-gray-700 transition-all duration-200">
+                        <i class="fa-solid fa-memory w-5 h-5"></i>
+                        <span class="block text-md font-semibold">رامات لاب</span>
+                        <span class="block text-xs">(25 ج)</span>
+                    </button>
+                    <!-- بطارية لاب توب -->
+                    <button onclick="addItem('laptop_battery_standalone')" class="flex items-center justify-center gap-2 bg-gray-600 text-white p-2 rounded-lg shadow-sm hover:bg-gray-700 transition-all duration-200">
+                        <i class="fa-solid fa-battery-half w-5 h-5"></i>
+                        <span class="block text-md font-semibold">بطارية</span>
+                        <span class="block text-xs">(25 ج)</span>
+                    </button>
+                    <!-- شاشة لاب توب -->
+                    <button onclick="addItem('laptop_screen_standalone')" class="flex items-center justify-center gap-2 bg-gray-600 text-white p-2 rounded-lg shadow-sm hover:bg-gray-700 transition-all duration-200">
+                        <i class="fa-solid fa-display w-5 h-5"></i>
+                        <span class="block text-md font-semibold">شاشة لاب</span>
+                        <span class="block text-xs">(30 ج)</span>
+                    </button>
+                    <!-- سي دي لاب توب -->
+                    <button onclick="addItem('laptop_cdRom_standalone')" class="flex items-center justify-center gap-2 bg-gray-600 text-white p-2 rounded-lg shadow-sm hover:bg-gray-700 transition-all duration-200">
+                        <i class="fa-solid fa-compact-disc w-5 h-5"></i>
+                        <span class="block text-md font-semibold">سي دي لاب</span>
+                        <span class="block text-xs">(15 ج)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3. قسم عرض الأصناف المستلمة (السلة) -->
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-3 text-gray-700 flex items-center gap-2">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    الأصناف المستلمة (الفاتورة الحالية)
+                </h2>
+                <div id="cart-items" class="bg-gray-50 border border-gray-200 rounded-lg p-4 min-h-[150px]">
+                    <p id="empty-cart-message" class="text-gray-500 text-center py-10">لم يتم إضافة أي أصناف بعد.</p>
+                </div>
+            </div>
+
+            <!-- 4. قسم ملخص الأعداد (تعديل: إضافة ملخص القطع) -->
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-3 text-gray-700">ملخص الأعداد (الفاتورة الحالية)</h2>
+                <!-- الملخص الأساسي -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <span class="block text-sm text-blue-700 font-medium">الكيسات</span>
+                        <span id="total-cases" class="block text-2xl font-bold text-blue-900">0</span>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <span class="block text-sm text-green-700 font-medium">التلفزيونات</span>
+                        <span id="total-tvs" class="block text-2xl font-bold text-green-900">0</span>
+                    </div>
+                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <span class="block text-sm text-yellow-700 font-medium">الشاشات</span>
+                        <span id="total-monitors" class="block text-2xl font-bold text-yellow-900">0</span>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                        <span class="block text-sm text-purple-700 font-medium">اللاب توب</span>
+                        <span id="total-laptops" class="block text-2xl font-bold text-purple-900">0</span>
+                    </div>
+                </div>
+                <!-- (جديد) ملخص قطع الغيار -->
+                <div id="parts-summary-container" class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                    <!-- سيتم ملء ملخص القطع هنا بواسطة الجافاسكريبت -->
+                </div>
+            </div>
+
+
+            <!-- 5. قسم الإجمالي -->
+            <div class="border-t-2 border-gray-200 pt-4 flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-800">الإجمالي:</h2>
+                <div id="total-price" class="text-3xl font-bold text-blue-600">
+                    0.00 ج
+                </div>
+            </div>
+            
+            <!-- أزرار التحكم (حفظ ومسح) -->
+            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                <button id="save-button" onclick="saveCartToLocalStorage()" class="w-full sm:w-auto flex-1 bg-green-500 text-white px-6 py-2 rounded-lg shadow-md hover:bg-green-600 transition-all duration-200 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-save"></i>
+                    حفظ الفاتورة الحالية
+                </button>
+                <button onclick="clearAll()" class="w-full sm:w-auto flex-1 bg-red-500 text-white px-6 py-2 rounded-lg shadow-md hover:bg-red-600 transition-all duration-200 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-trash"></i>
+                    مسح الفاتورة الحالية
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. صفحة الجرد -->
+    <div id="inventory-page" class="page">
+        <!-- زر الرجوع -->
+        <div class="bg-white shadow-sm sticky top-0 z-10">
+            <div class="container mx-auto max-w-5xl p-4 flex justify-between items-center">
+                <button onclick="showPage('home-page')" class="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-all">
+                    <i class="fa-solid fa-arrow-right"></i>
+                    <span>الرجوع إلى الرئيسية</span>
+                </button>
+                <h1 class="text-2xl font-bold text-gray-800">
+                    <i class="fa-solid fa-clipboard-list text-indigo-500"></i>
+                    صفحة الجرد
+                </h1>
+            </div>
+        </div>
+
+        <div class="container mx-auto max-w-5xl p-4 sm:p-6">
+            
+            <!-- قسم الفلترة بالتاريخ (تعديل: إضافة زر "اليوم") -->
+            <div class="mb-6 p-4 bg-white rounded-lg shadow">
+                <h3 class="text-lg font-semibold mb-3 text-gray-700">فلترة حسب التاريخ</h3>
+                <div class="flex flex-col sm:flex-row gap-4 items-end">
+                    <div class="flex-1 w-full">
+                        <label for="date-from" class="block text-sm font-medium text-gray-600 mb-1">من تاريخ</label>
+                        <input type="date" id="date-from" class="w-full border border-gray-300 rounded-lg p-2">
+                    </div>
+                    <div class="flex-1 w-full">
+                        <label for="date-to" class="block text-sm font-medium text-gray-600 mb-1">إلى تاريخ</label>
+                        <input type="date" id="date-to" class="w-full border border-gray-300 rounded-lg p-2">
+                    </div>
+                    <!-- (جديد) زر عرض تاريخ اليوم -->
+                    <button onclick="setLatestDate()" class="w-full sm:w-auto bg-blue-500 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-blue-600 transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-calendar-day"></i>
+                        عرض تاريخ اليوم
+                    </button>
+                </div>
+            </div>
+
+            <!-- قسم قائمة الفواتير (تعديل: إضافة زر "إخفاء بسيط") -->
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-3 text-gray-700">الفواتير المحفوظة</h2>
+                <div id="inventory-list-container" class="bg-white border border-gray-200 rounded-lg shadow min-h-[200px] max-h-[50vh] overflow-y-auto">
+                    <!-- سيتم ملء قائمة الجرد هنا -->
+                    <p id="no-inventory-lists" class="text-gray-500 text-center py-10">لا توجد فواتير مطابقة لفلتر التاريخ هذا.</p>
+                </div>
+            </div>
+
+            <!-- قسم ملخص الجرد (المفلتر) -->
+            <div>
+                <h2 class="text-xl font-semibold mb-3 text-gray-700">ملخص الجرد (حسب الفلترة)</h2>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <div id="inventory-summary-container" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <!-- سيتم ملء ملخص الجرد هنا -->
+                        <p class="text-gray-500 col-span-full text-center">قم بتحديد التواريخ لعرض الملخص.</p>
+                    </div>
+                    <div class="border-t border-gray-200 mt-4 pt-2 text-sm text-gray-500 text-center">
+                        آخر تحديث للملخص: <span id="last-updated-date" class="font-medium">--</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- 4. النوافذ المنبثقة (Modals) -->
+    
+    <!-- 4.1. نافذة الكيسة -->
+    <div id="case-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h3 class="text-xl font-semibold mb-6 text-center">تخصيص الكيسة (السعر الأساسي: 300 ج)</h3>
+            <!-- هارد -->
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-lg text-gray-700 flex items-center gap-2"><i class="fa-regular fa-hard-drive w-5 h-5"></i> هارد (± 40 ج)</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="adjustComponent('hardDrive', -1)" class="bg-red-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">-</button>
+                    <input type="number" id="hardDrive-count" value="0" class="w-16 text-center border border-gray-300 rounded-lg p-1" readonly>
+                    <button onclick="adjustComponent('hardDrive', 1)" class="bg-green-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">+</button>
+                </div>
+            </div>
+            <!-- رامات -->
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-lg text-gray-700 flex items-center gap-2"><i class="fa-solid fa-memory w-5 h-5"></i> رامات (± 25 ج)</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="adjustComponent('ram', -1)" class="bg-red-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">-</button>
+                    <input type="number" id="ram-count" value="0" class="w-16 text-center border border-gray-300 rounded-lg p-1" readonly>
+                    <button onclick="adjustComponent('ram', 1)" class="bg-green-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">+</button>
+                </div>
+            </div>
+            <!-- سي دي -->
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-lg text-gray-700 flex items-center gap-2"><i class="fa-solid fa-compact-disc w-5 h-5"></i> سي دي روم (± 25 ج)</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="adjustComponent('cdRom', -1)" class="bg-red-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">-</button>
+                    <input type="number" id="cdRom-count" value="0" class="w-16 text-center border border-gray-300 rounded-lg p-1" readonly>
+                    <button onclick="adjustComponent('cdRom', 1)" class="bg-green-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">+</button>
+                </div>
+            </div>
+            <!-- باور -->
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-lg text-gray-700 flex items-center gap-2"><i class="fa-solid fa-plug w-5 h-5"></i> باور سبلاي (± 25 ج)</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="adjustComponent('powerSupply', -1)" class="bg-red-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">-</button>
+                    <input type="number" id="powerSupply-count" value="0" class="w-16 text-center border border-gray-300 rounded-lg p-1" readonly>
+                    <button onclick="adjustComponent('powerSupply', 1)" class="bg-green-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">+</button>
+                </div>
+            </div>
+            <!-- فانة -->
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-lg text-gray-700 flex items-center gap-2"><i class="fa-solid fa-fan w-5 h-5"></i> فانة (± 20 ج)</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="adjustComponent('fan', -1)" class="bg-red-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">-</button>
+                    <input type="number" id="fan-count" value="0" class="w-16 text-center border border-gray-300 rounded-lg p-1" readonly>
+                    <button onclick="adjustComponent('fan', 1)" class="bg-green-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">+</button>
+                </div>
+            </div>
+            <!-- بروسيسور -->
+            <div class="flex justify-between items-center mb-6">
+                <span class="text-lg text-gray-700 flex items-center gap-2"><i class="fa-solid fa-microchip w-5 h-5"></i> بروسيسور (± 10 ج)</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="adjustComponent('processor', -1)" class="bg-red-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">-</button>
+                    <input type="number" id="processor-count" value="0" class="w-16 text-center border border-gray-300 rounded-lg p-1" readonly>
+                    <button onclick="adjustComponent('processor', 1)" class="bg-green-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">+</button>
+                </div>
+            </div>
+            <!-- السعر النهائي -->
+            <div class="text-center text-lg font-semibold text-gray-800 mb-6">
+                السعر النهائي للكيسة: <span id="case-modal-price" class="text-blue-600">300</span> ج
+            </div>
+            <!-- أزرار الحفظ والإلغاء -->
+            <div class="flex gap-4">
+                <button onclick="saveCase()" class="flex-1 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-2"><i class="fa-solid fa-plus"></i> إضافة الكيسة</button>
+                <button onclick="closeCaseModal()" class="flex-1 bg-gray-300 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-400 transition-all flex items-center justify-center gap-2"><i class="fa-solid fa-times"></i> إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4.2. نافذة اللاب توب -->
+    <div id="laptop-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h3 class="text-xl font-semibold mb-6 text-center">تخصيص اللاب توب (السعر الأساسي: 250 ج)</h3>
+            <!-- هارد -->
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-lg text-gray-700 flex items-center gap-2"><i class="fa-regular fa-hard-drive w-5 h-5"></i> هارد (± 15 ج)</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="adjustLaptopComponent('hardDrive', -1)" class="bg-red-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">-</button>
+                    <input type="number" id="laptop-hardDrive-count" value="0" class="w-16 text-center border border-gray-300 rounded-lg p-1" readonly>
+                    <button onclick="adjustLaptopComponent('hardDrive', 1)" class="bg-green-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">+</button>
+                </div>
+            </div>
+            <!-- رامات -->
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-lg text-gray-700 flex items-center gap-2"><i class="fa-solid fa-memory w-5 h-5"></i> رامات (± 25 ج)</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="adjustLaptopComponent('ram', -1)" class="bg-red-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">-</button>
+                    <input type="number" id="laptop-ram-count" value="0" class="w-16 text-center border border-gray-300 rounded-lg p-1" readonly>
+                    <button onclick="adjustLaptopComponent('ram', 1)" class="bg-green-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">+</button>
+                </div>
+            </div>
+            <!-- سي دي -->
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-lg text-gray-700 flex items-center gap-2"><i class="fa-solid fa-compact-disc w-5 h-5"></i> سي دي روم (± 15 ج)</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="adjustLaptopComponent('cdRom', -1)" class="bg-red-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">-</button>
+                    <input type="number" id="laptop-cdRom-count" value="0" class="w-16 text-center border border-gray-300 rounded-lg p-1" readonly>
+                    <button onclick="adjustLaptopComponent('cdRom', 1)" class="bg-green-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">+</button>
+                </div>
+            </div>
+            <!-- بطارية -->
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-lg text-gray-700 flex items-center gap-2"><i class="fa-solid fa-battery-half w-5 h-5"></i> بطارية (± 25 ج)</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="adjustLaptopComponent('battery', -1)" class="bg-red-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">-</button>
+                    <input type="number" id="laptop-battery-count" value="0" class="w-16 text-center border border-gray-300 rounded-lg p-1" readonly>
+                    <button onclick="adjustLaptopComponent('battery', 1)" class="bg-green-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">+</button>
+                </div>
+            </div>
+            <!-- شاشة -->
+            <div class="flex justify-between items-center mb-6">
+                <span class="text-lg text-gray-700 flex items-center gap-2"><i class="fa-solid fa-display w-5 h-5"></i> شاشة (± 30 ج)</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="adjustLaptopComponent('screen', -1)" class="bg-red-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">-</button>
+                    <input type="number" id="laptop-screen-count" value="0" class="w-16 text-center border border-gray-300 rounded-lg p-1" readonly>
+                    <button onclick="adjustLaptopComponent('screen', 1)" class="bg-green-500 text-white w-8 h-8 rounded-full font-bold text-lg flex items-center justify-center">+</button>
+                </div>
+            </div>
+            <!-- السعر النهائي -->
+            <div class="text-center text-lg font-semibold text-gray-800 mb-6">
+                السعر النهائي للاب توب: <span id="laptop-modal-price" class="text-purple-600">250</span> ج
+            </div>
+            <!-- أزرار الحفظ والإلغاء -->
+            <div class="flex gap-4">
+                <button onclick="saveLaptop()" class="flex-1 bg-purple-500 text-white py-2 px-4 rounded-lg hover:bg-purple-600 transition-all flex items-center justify-center gap-2"><i class="fa-solid fa-plus"></i> إضافة اللاب توب</button>
+                <button onclick="closeLaptopModal()" class="flex-1 bg-gray-300 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-400 transition-all flex items-center justify-center gap-2"><i class="fa-solid fa-times"></i> إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4.3. نافذة صنف مخصص -->
+    <div id="custom-item-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h3 class="text-xl font-semibold mb-6 text-center">إضافة صنف مخصص</h3>
+            <div class="mb-4">
+                <label for="custom-item-name" class="block text-lg text-gray-700 mb-2">اسم الصنف</label>
+                <input type="text" id="custom-item-name" class="w-full border border-gray-300 rounded-lg p-2 text-lg" placeholder="مثال: كارت شاشة">
+            </div>
+            <div class="mb-6">
+                <label for="custom-item-price" class="block text-lg text-gray-700 mb-2">السعر (بالجنيه)</label>
+                <input type="number" id="custom-item-price" class="w-full border border-gray-300 rounded-lg p-2 text-lg" placeholder="مثال: 200">
+            </div>
+            <p id="custom-item-error" class="text-red-500 text-center mb-4 hidden">يجب إدخال الاسم والسعر.</p>
+            <div class="flex gap-4">
+                <button onclick="saveCustomItem()" class="flex-1 bg-teal-500 text-white py-2 px-4 rounded-lg hover:bg-teal-600 transition-all flex items-center justify-center gap-2"><i class="fa-solid fa-plus"></i> إضافة الصنف</button>
+                <button onclick="closeCustomItemModal()" class="flex-1 bg-gray-300 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-400 transition-all flex items-center justify-center gap-2"><i class="fa-solid fa-times"></i> إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4.4. نافذة الملخص الإجمالي (للقوائم المحفوظة) -->
+    <div id="summary-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
+            <h3 class="text-xl font-semibold mb-6 text-center">الملخص الإجمالي (من جميع القوائم المحفوظة)</h3>
+            <div id="summary-modal-body" class="max-h-96 overflow-y-auto divide-y divide-gray-200">
+                <!-- سيتم ملء الملخص هنا -->
+            </div>
+            <div class="mt-6">
+                <button onclick="closeSummaryModal()" class="w-full bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-all flex items-center justify-center gap-2"><i class="fa-solid fa-times"></i> إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- 5. منطق جافاسكريبت ---
+
+        // تعريف أسعار الأصناف الأساسية وأسعار المكونات
+        const baseItemPrices = {
+            'case': 300, 'tv': 100, 'monitor': 140, 'laptop': 250,
+            'hardDrive_standalone': 40, 'ram_standalone': 25, 'cdRom_standalone': 25,
+            'motherboard': 35, 'powerSupply': 25, 'fan_standalone': 20, 'processor_standalone': 10,
+            'laptop_hardDrive_standalone': 15, 'laptop_ram_standalone': 25, 'laptop_battery_standalone': 25,
+            'laptop_screen_standalone': 30, 'laptop_cdRom_standalone': 15
+        };
+        const componentPrices = {
+            'hardDrive': 40, 'ram': 25, 'cdRom': 25, 'powerSupply': 25, 'fan': 20, 'processor': 10
+        };
+        const laptopComponentPrices = {
+            'hardDrive': 15, 'ram': 25, 'cdRom': 15, 'battery': 25, 'screen': 30
+        };
+        
+        // --- متغيرات الحالة (State) ---
+        let cart = JSON.parse(localStorage.getItem('currentCart')) || [];
+        let editingInvoiceId = null;
+        let currentCaseComponents = { hardDrive: 0, ram: 0, cdRom: 0, powerSupply: 0, fan: 0, processor: 0 };
+        let currentLaptopComponents = { hardDrive: 0, ram: 0, cdRom: 0, battery: 0, screen: 0 };
+        let temporarilyHiddenInvoices = new Set(); // (جديد) لتخزين الفواتير المخفية مؤقتاً
+
+        // --- الحصول على عناصر الصفحة (DOM Elements) ---
+        const cartItemsContainer = document.getElementById('cart-items');
+        const totalPriceElement = document.getElementById('total-price');
+        const emptyCartMessage = document.getElementById('empty-cart-message');
+        const saveButton = document.getElementById('save-button');
+        
+        // عناصر نافذة الكيسة
+        const caseModal = document.getElementById('case-modal');
+        const hardDriveCountInput = document.getElementById('hardDrive-count');
+        const ramCountInput = document.getElementById('ram-count');
+        const cdRomCountInput = document.getElementById('cdRom-count');
+        const powerSupplyCountInput = document.getElementById('powerSupply-count');
+        const fanCountInput = document.getElementById('fan-count');
+        const processorCountInput = document.getElementById('processor-count');
+        const caseModalPrice = document.getElementById('case-modal-price');
+
+        // عناصر نافذة اللاب توب
+        const laptopModal = document.getElementById('laptop-modal');
+        const laptopHardDriveCountInput = document.getElementById('laptop-hardDrive-count');
+        const laptopRamCountInput = document.getElementById('laptop-ram-count');
+        const laptopCdRomCountInput = document.getElementById('laptop-cdRom-count');
+        const laptopBatteryCountInput = document.getElementById('laptop-battery-count');
+        const laptopScreenCountInput = document.getElementById('laptop-screen-count');
+        const laptopModalPrice = document.getElementById('laptop-modal-price');
+
+        // عناصر الملخص (صفحة الاستلام)
+        const totalCasesElement = document.getElementById('total-cases');
+        const totalTvsElement = document.getElementById('total-tvs');
+        const totalMonitorsElement = document.getElementById('total-monitors');
+        const totalLaptopsElement = document.getElementById('total-laptops');
+        const partsSummaryContainer = document.getElementById('parts-summary-container'); // (جديد)
+
+        // (تعديل) تم حذف عناصر القائمة المحفوظة من هنا
+        // const savedListsContainer = document.getElementById('saved-lists-container');
+        // const noSavedListsMessage = document.getElementById('no-saved-lists');
+
+        // عناصر نافذة الصنف المخصص
+        const customItemModal = document.getElementById('custom-item-modal');
+        const customItemNameInput = document.getElementById('custom-item-name');
+        const customItemPriceInput = document.getElementById('custom-item-price');
+        const customItemError = document.getElementById('custom-item-error');
+
+        // عناصر نافذة الملخص الإجمالي
+        const summaryModal = document.getElementById('summary-modal');
+        const summaryModalBody = document.getElementById('summary-modal-body');
+
+        // عناصر صفحة الجرد
+        const dateFromInput = document.getElementById('date-from');
+        const dateToInput = document.getElementById('date-to');
+        const inventoryListContainer = document.getElementById('inventory-list-container');
+        const noInventoryListsMessage = document.getElementById('no-inventory-lists');
+        const inventorySummaryContainer = document.getElementById('inventory-summary-container');
+        const lastUpdatedDateElement = document.getElementById('last-updated-date');
+
+        // --- دوال التنقل بين الصفحات ---
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        // --- (جديد) دالة طي القوائم ---
+        function toggleCollapse(sectionId, arrowId) {
+            const section = document.getElementById(sectionId);
+            const arrow = document.getElementById(arrowId);
+            section.classList.toggle('hidden');
+            arrow.classList.toggle('collapsed');
+        }
+
+        // --- دوال صفحة الاستلام (الحاسبة) ---
+
+        function persistCurrentCart() {
+            localStorage.setItem('currentCart', JSON.stringify(cart));
+        }
+
+        function addItem(itemKey, customName = null, customPrice = null) {
+            let existingItem = cart.find(item => item.itemKey === itemKey && !item.isCase);
+            if (existingItem) {
+                existingItem.quantity++;
+            } else {
+                const basePrice = (customPrice !== null) ? parseFloat(customPrice) : baseItemPrices[itemKey];
+                let itemName = '';
+                if (customName !== null) {
+                    itemName = customName;
+                } else {
+                    switch(itemKey) {
+                        case 'tv': itemName = 'تلفزيون'; break;
+                        case 'monitor': itemName = 'شاشة كمبيوتر'; break;
+                        case 'hardDrive_standalone': itemName = 'هارد ديسك'; break;
+                        case 'ram_standalone': itemName = 'رامات (قطع)'; break;
+                        case 'cdRom_standalone': itemName = 'سي دي روم (قطع)'; break;
+                        case 'motherboard': itemName = 'بوردة'; break;
+                        case 'powerSupply': itemName = 'باور سبلاي'; break;
+                        case 'fan_standalone': itemName = 'فانة'; break;
+                        case 'processor_standalone': itemName = 'بروسيسور'; break;
+                        case 'laptop_hardDrive_standalone': itemName = 'هارد لاب توب'; break;
+                        case 'laptop_ram_standalone': itemName = 'رامات لاب توب'; break;
+                        case 'laptop_battery_standalone': itemName = 'بطارية لاب توب'; break;
+                        case 'laptop_screen_standalone': itemName = 'شاشة لاب توب'; break;
+                        case 'laptop_cdRom_standalone': itemName = 'سي دي لاب توب'; break;
+                    }
+                }
+                if (isNaN(basePrice) || basePrice <= 0) {
+                    if(customItemError) customItemError.textContent = "السعر يجب أن يكون رقماً صحيحاً وأكبر من صفر.";
+                    if(customItemError) customItemError.classList.remove('hidden');
+                    return;
+                }
+                const newItem = {
+                    itemKey: itemKey, name: itemName, basePrice: basePrice,
+                    quantity: 1, isCase: false
+                };
+                cart.push(newItem);
+            }
+            renderCart();
+            updateTotal();
+            persistCurrentCart();
+        }
+
+        function adjustQuantity(itemKey, amount) {
+            let item = cart.find(item => item.itemKey === itemKey && !item.isCase);
+            if (item) {
+                item.quantity += amount;
+                if (item.quantity <= 0) {
+                    cart = cart.filter(cartItem => cartItem.itemKey !== itemKey);
+                }
+            }
+            renderCart();
+            updateTotal();
+            persistCurrentCart();
+        }
+
+        // --- دوال نوافذ الكيسة واللابتوب ---
+        function openCaseModal() {
+            currentCaseComponents = { hardDrive: 0, ram: 0, cdRom: 0, powerSupply: 0, fan: 0, processor: 0 };
+            hardDriveCountInput.value = 0;
+            ramCountInput.value = 0;
+            cdRomCountInput.value = 0;
+            powerSupplyCountInput.value = 0;
+            if(fanCountInput) fanCountInput.value = 0;
+            if(processorCountInput) processorCountInput.value = 0;
+            updateCaseModalPrice();
+            caseModal.classList.remove('hidden');
+        }
+        function closeCaseModal() { caseModal.classList.add('hidden'); }
+        function adjustComponent(component, amount) {
+            if (currentCaseComponents[component] + amount < -1) return;
+            currentCaseComponents[component] += amount;
+            document.getElementById(`${component}-count`).value = currentCaseComponents[component];
+            updateCaseModalPrice();
+        }
+        function updateCaseModalPrice() {
+            const basePrice = baseItemPrices['case'];
+            const adjustments = (currentCaseComponents.hardDrive * componentPrices.hardDrive) +
+                                (currentCaseComponents.ram * componentPrices.ram) +
+                                (currentCaseComponents.cdRom * componentPrices.cdRom) +
+                                (currentCaseComponents.powerSupply * componentPrices.powerSupply) +
+                                (currentCaseComponents.fan * componentPrices.fan) +
+                                (currentCaseComponents.processor * componentPrices.processor);
+            caseModalPrice.textContent = (basePrice + adjustments).toFixed(2);
+        }
+        function saveCase() {
+            const basePrice = baseItemPrices['case'];
+            const adjustments = (currentCaseComponents.hardDrive * componentPrices.hardDrive) +
+                                (currentCaseComponents.ram * componentPrices.ram) +
+                                (currentCaseComponents.cdRom * componentPrices.cdRom) +
+                                (currentCaseComponents.powerSupply * componentPrices.powerSupply) +
+                                (currentCaseComponents.fan * componentPrices.fan) +
+                                (currentCaseComponents.processor * componentPrices.processor);
+            const finalPrice = basePrice + adjustments;
+            const newItem = {
+                id: Date.now(), name: 'كيسة', basePrice: basePrice, finalPrice: finalPrice,
+                isCase: true, components: { ...currentCaseComponents }
+            };
+            cart.push(newItem);
+            renderCart();
+            updateTotal();
+            persistCurrentCart();
+            closeCaseModal();
+        }
+
+        function openLaptopModal() {
+            currentLaptopComponents = { hardDrive: 0, ram: 0, cdRom: 0, battery: 0, screen: 0 };
+            laptopHardDriveCountInput.value = 0;
+            laptopRamCountInput.value = 0;
+            laptopCdRomCountInput.value = 0;
+            laptopBatteryCountInput.value = 0;
+            laptopScreenCountInput.value = 0;
+            updateLaptopModalPrice();
+            laptopModal.classList.remove('hidden');
+        }
+        function closeLaptopModal() { laptopModal.classList.add('hidden'); }
+        function adjustLaptopComponent(component, amount) {
+            if (currentLaptopComponents[component] + amount < -1) return;
+            currentLaptopComponents[component] += amount;
+            document.getElementById(`laptop-${component}-count`).value = currentLaptopComponents[component];
+            updateLaptopModalPrice();
+        }
+        function updateLaptopModalPrice() {
+            const basePrice = baseItemPrices['laptop'];
+            const adjustments = (currentLaptopComponents.hardDrive * laptopComponentPrices.hardDrive) +
+                                (currentLaptopComponents.ram * laptopComponentPrices.ram) +
+                                (currentLaptopComponents.cdRom * laptopComponentPrices.cdRom) +
+                                (currentLaptopComponents.battery * laptopComponentPrices.battery) +
+                                (currentLaptopComponents.screen * laptopComponentPrices.screen);
+            laptopModalPrice.textContent = (basePrice + adjustments).toFixed(2);
+        }
+        function saveLaptop() {
+            const basePrice = baseItemPrices['laptop'];
+            const adjustments = (currentLaptopComponents.hardDrive * laptopComponentPrices.hardDrive) +
+                                (currentLaptopComponents.ram * laptopComponentPrices.ram) +
+                                (currentLaptopComponents.cdRom * laptopComponentPrices.cdRom) +
+                                (currentLaptopComponents.battery * laptopComponentPrices.battery) +
+                                (currentLaptopComponents.screen * laptopComponentPrices.screen);
+            const finalPrice = basePrice + adjustments;
+            const newItem = {
+                id: Date.now(), name: 'لاب توب', basePrice: basePrice, finalPrice: finalPrice,
+                isCase: true, components: { ...currentLaptopComponents }
+            };
+            cart.push(newItem);
+            renderCart();
+            updateTotal();
+            persistCurrentCart();
+            closeLaptopModal();
+        }
+
+        // --- دوال الصنف المخصص ---
+        // (تعديل) إضافة 'event' لإيقاف الفقاعة (event propagation)
+        function openCustomItemModal(event) {
+            event.stopPropagation(); // منع طي القسم عند الضغط على الزر
+            customItemNameInput.value = '';
+            customItemPriceInput.value = '';
+            customItemError.classList.add('hidden');
+            customItemModal.classList.remove('hidden');
+        }
+        function closeCustomItemModal() { customItemModal.classList.add('hidden'); }
+        function saveCustomItem() {
+            const name = customItemNameInput.value;
+            const price = customItemPriceInput.value;
+            if (!name || !price) {
+                customItemError.textContent = "يجب إدخال الاسم والسعر.";
+                customItemError.classList.remove('hidden');
+                return;
+            }
+            const itemKey = 'custom_' + name.trim().replace(/\s+/g, '_');
+            addItem(itemKey, name, price);
+            closeCustomItemModal();
+        }
+        
+        function removeItem(idOrKey) {
+            let itemById = cart.find(item => item.id === idOrKey && item.isCase);
+            if (itemById) {
+                cart = cart.filter(item => item.id !== idOrKey);
+            } else {
+                cart = cart.filter(item => item.itemKey !== idOrKey);
+            }
+            renderCart();
+            updateTotal();
+            persistCurrentCart();
+        }
+        
+        function clearAll() {
+            cart = [];
+            editingInvoiceId = null;
+            saveButton.textContent = 'حفظ الفاتورة الحالية';
+            saveButton.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+            saveButton.classList.add('bg-green-500', 'hover:bg-green-600');
+            renderCart();
+            updateTotal();
+            persistCurrentCart();
+        }
+
+        function renderCart() {
+            cartItemsContainer.innerHTML = ''; 
+            if (cart.length === 0) {
+                cartItemsContainer.appendChild(emptyCartMessage);
+            } else {
+                emptyCartMessage.remove();
+                cart.sort((a, b) => (a.isCase === b.isCase) ? 0 : (a.isCase ? -1 : 1));
+                cart.forEach(item => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'flex justify-between items-center p-3 border-b border-gray-200 last:border-b-0 gap-2';
+                    if (item.isCase) {
+                        let description = '';
+                        const details = [];
+                        const components = item.components || {};
+                        let hasModifications = false;
+                        Object.keys(components).forEach(key => {
+                            if (components[key] !== 0) {
+                                hasModifications = true;
+                                let partName = '';
+                                switch(key) {
+                                    case 'hardDrive': partName = 'هارد'; break;
+                                    case 'ram': partName = 'رامات'; break;
+                                    case 'cdRom': partName = 'سي دي'; break;
+                                    case 'powerSupply': partName = 'باور'; break;
+                                    case 'fan': partName = 'فانة'; break;
+                                    case 'processor': partName = 'بروسيسور'; break;
+                                    case 'battery': partName = 'بطارية'; break;
+                                    case 'screen': partName = 'شاشة'; break;
+                                }
+                                details.push(`${partName}: ${components[key] > 0 ? '+' : ''}${components[key]}`);
+                            }
+                        });
+                        if (hasModifications) {
+                            description = ` <span class="text-xs text-gray-500">(${details.join(', ')})</span>`;
+                        } else {
+                            description = ` <span class="text-xs text-green-600">(${item.name === 'كيسة' ? 'كيسة كاملة' : 'لاب توب كامل'})</span>`;
+                        }
+                        itemElement.innerHTML = `
+                            <div class="flex-1 min-w-0">
+                                <span class="font-semibold text-gray-800 break-words">${item.name}</span>${description}
+                            </div>
+                            <div class="flex items-center gap-4 flex-shrink-0">
+                                <span class="font-semibold text-gray-900">${item.finalPrice.toFixed(2)} ج</span>
+                                <button onclick="removeItem(${item.id})" class="text-red-500 hover:text-red-700 transition-all p-1"><i class="fa-solid fa-trash-can w-5 h-5"></i></button>
+                            </div>`;
+                    } else {
+                        const itemTotalPrice = item.basePrice * item.quantity;
+                        itemElement.innerHTML = `
+                            <div class="flex-1 min-w-0">
+                                <span class="font-semibold text-gray-800 break-words">${item.name}</span>
+                            </div>
+                            <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                                <div class="flex items-center gap-1">
+                                    <button onclick="adjustQuantity('${item.itemKey}', -1)" class="bg-red-500 text-white w-7 h-7 rounded-full font-bold text-lg flex items-center justify-center">-</button>
+                                    <span class="w-10 text-center font-semibold text-lg">${item.quantity}</span>
+                                    <button onclick="adjustQuantity('${item.itemKey}', 1)" class="bg-green-500 text-white w-7 h-7 rounded-full font-bold text-lg flex items-center justify-center">+</button>
+                                </div>
+                                <span class="font-semibold text-gray-900 w-20 sm:w-24 text-left">${itemTotalPrice.toFixed(2)} ج</span>
+                                <button onclick="removeItem('${item.itemKey}')" class="text-red-500 hover:text-red-700 transition-all p-1"><i class="fa-solid fa-trash-can w-5 h-5"></i></button>
+                            </div>`;
+                    }
+                    cartItemsContainer.appendChild(itemElement);
+                });
+            }
+        }
+
+        /**
+         * (تعديل) حساب وتحديث الإجمالي الكلي وملخص الأعداد (بما في ذلك قطع الغيار)
+         */
+        function updateTotal() {
+            let total = 0;
+            let caseCount = 0, tvCount = 0, monitorCount = 0, laptopCount = 0;
+            const partsSummary = {}; // (جديد) لتجميع قطع الغيار
+            
+            cart.forEach(item => {
+                if (item.isCase) {
+                    total += item.finalPrice;
+                    if (item.name === 'كيسة') caseCount++;
+                    else if (item.name === 'لاب توب') laptopCount++;
+                } else {
+                    total += (item.basePrice * item.quantity);
+                    if (item.itemKey === 'tv') {
+                        tvCount += item.quantity;
+                    } else if (item.itemKey === 'monitor') {
+                        monitorCount += item.quantity;
+                    } else {
+                        // (جديد) تجميع باقي القطع
+                        partsSummary[item.name] = (partsSummary[item.name] || 0) + item.quantity;
+                    }
+                }
+            });
+            
+            // تحديث الإجمالي
+            totalPriceElement.textContent = `${total.toFixed(2)} ج`;
+            
+            // تحديث الملخص الأساسي
+            totalCasesElement.textContent = caseCount;
+            totalTvsElement.textContent = tvCount;
+            totalMonitorsElement.textContent = monitorCount;
+            totalLaptopsElement.textContent = laptopCount;
+
+            // (جديد) بناء ورسم ملخص قطع الغيار
+            partsSummaryContainer.innerHTML = '';
+            Object.keys(partsSummary).sort().forEach(partName => {
+                const count = partsSummary[partName];
+                const partElement = document.createElement('div');
+                partElement.className = "bg-gray-50 p-4 rounded-lg border border-gray-200";
+                partElement.innerHTML = `
+                    <span class="block text-sm text-gray-700 font-medium">${partName}</span>
+                    <span class="block text-2xl font-bold text-gray-900">${count}</span>`;
+                partsSummaryContainer.appendChild(partElement);
+            });
+        }
+        
+        // --- دوال حفظ واستعادة القوائم (صفحة الاستلام) ---
+        
+        // (تعديل) تم حذف دالة loadSavedCarts() لأن القائمة لم تعد هنا
+        
+        function saveCartToLocalStorage() {
+            if (cart.length === 0) return;
+            
+            const savedCarts = JSON.parse(localStorage.getItem('savedCarts')) || [];
+            const currentTotal = totalPriceElement.textContent.replace(' ج', '');
+            
+            if (editingInvoiceId !== null) {
+                const index = savedCarts.findIndex(c => c.id === editingInvoiceId);
+                if (index > -1) {
+                    savedCarts[index].cart = cart;
+                    savedCarts[index].total = parseFloat(currentTotal).toFixed(2);
+                    savedCarts[index].date = new Date().toISOString();
+                }
+                localStorage.setItem('savedCarts', JSON.stringify(savedCarts));
+                
+                clearAll();
+                // (تعديل) لا نقوم بتحديث قائمة صفحة الاستلام، بل نذهب للجرد
+                initInventoryPage();
+                showPage('inventory-page');
+
+            } else {
+                const newSavedCart = {
+                    id: Date.now(),
+                    date: new Date().toISOString(),
+                    cart: cart,
+                    total: parseFloat(currentTotal).toFixed(2)
+                };
+                savedCarts.push(newSavedCart);
+                localStorage.setItem('savedCarts', JSON.stringify(savedCarts));
+                clearAll();
+            }
+        }
+
+        // (تعديل) تم حذف دوال restoreCart() و deleteSavedCart() من هنا، ستكون في صفحة الجرد
+        
+        // --- دوال الملخص الإجمالي (النافذة المنبثقة) ---
+        function openSummaryModal() {
+            showTotalSummary();
+            summaryModal.classList.remove('hidden');
+        }
+        function closeSummaryModal() { summaryModal.classList.add('hidden'); }
+        function showTotalSummary() {
+            // ... (هذه الدالة تبقى كما هي، لأنها ملخص إجمالي) ...
+            const savedCarts = JSON.parse(localStorage.getItem('savedCarts')) || [];
+            let totalRevenue = 0;
+            const summary = {
+                cases: { count: 0, components: {} },
+                laptops: { count: 0, components: {} },
+                simpleItems: {}
+            };
+            if (savedCarts.length === 0) {
+                summaryModalBody.innerHTML = '<p class="text-center text-gray-500 py-4">لا توجد بيانات محفوظة لعرض ملخص لها.</p>';
+                return;
+            }
+            savedCarts.forEach(savedCart => {
+                totalRevenue += parseFloat(savedCart.total);
+                savedCart.cart.forEach(item => {
+                    if (item.isCase) {
+                        const target = item.name === 'كيسة' ? summary.cases : summary.laptops;
+                        target.count++;
+                        Object.entries(item.components).forEach(([key, value]) => {
+                            if (value !== 0) {
+                                target.components[key] = (target.components[key] || 0) + value;
+                            }
+                        });
+                    } else {
+                        summary.simpleItems[item.name] = (summary.simpleItems[item.name] || 0) + item.quantity;
+                    }
+                });
+            });
+            let html = `<div class="p-2 border-b border-gray-300">
+                            <strong class="text-lg text-blue-600">إجمالي الإيرادات (كل الفواتير): ${totalRevenue.toFixed(2)} ج</strong>
+                        </div>`;
+            html += `<div class="p-2"><strong class="text-md text-gray-800">إجمالي الكيسات: ${summary.cases.count}</strong></div>`;
+            html += `<div class="p-2"><strong class="text-md text-gray-800">إجمالي اللاب توبات: ${summary.laptops.count}</strong></div>`;
+            html += '<h4 class="font-semibold text-gray-700 p-2 mt-2 bg-gray-50 rounded">ملخص الأصناف المجمعة:</h4>';
+            Object.entries(summary.simpleItems).sort().forEach(([name, count]) => {
+                html += `<div class="flex justify-between p-2"><span class="ml-2">${name}:</span><strong>${count}</strong></div>`;
+            });
+            summaryModalBody.innerHTML = html;
+        }
+
+        // --- (جديد) دوال صفحة الجرد ---
+
+        function initInventoryPage() {
+            // مسح قائمة الإخفاء المؤقت عند فتح الصفحة
+            temporarilyHiddenInvoices.clear();
+            renderInventoryList();
+        }
+
+        /**
+         * (جديد) دالة لضبط تاريخ "إلى" على اليوم الحالي
+         */
+        function setLatestDate() {
+            dateToInput.value = new Date().toISOString().split('T')[0];
+            renderInventoryList();
+        }
+
+        /**
+         * (جديد) دالة لتبديل حالة الإخفاء المؤقت للفاتورة
+         */
+        function toggleInvoiceVisibility(id, isHidden) {
+            if (isHidden) {
+                temporarilyHiddenInvoices.add(id);
+            } else {
+                temporarilyHiddenInvoices.delete(id);
+            }
+            // إعادة حساب الملخص فقط، دون إعادة رسم القائمة
+            renderInventoryList(); // (تعديل) الأسهل إعادة الرسم لضمان التوافق
+        }
+
+        /**
+         * (تعديل) الدالة الرئيسية لرسم قائمة الجرد والملخص المفلتر
+         */
+        function renderInventoryList() {
+            const savedCarts = JSON.parse(localStorage.getItem('savedCarts')) || [];
+            
+            const dateFrom = dateFromInput.value ? new Date(dateFromInput.value) : null;
+            const dateTo = dateToInput.value ? new Date(dateToInput.value) : null;
+            
+            if (dateFrom) dateFrom.setHours(0, 0, 0, 0);
+            if (dateTo) dateTo.setHours(23, 59, 59, 999);
+
+            const filteredCarts = savedCarts.filter(savedCart => {
+                const cartDate = new Date(savedCart.date);
+                if (dateFrom && cartDate < dateFrom) return false;
+                if (dateTo && cartDate > dateTo) return false;
+                return true;
+            });
+
+            inventoryListContainer.innerHTML = '';
+            
+            if (filteredCarts.length === 0) {
+                inventoryListContainer.appendChild(noInventoryListsMessage);
+            } else {
+                noInventoryListsMessage.remove();
+                filteredCarts.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                filteredCarts.forEach(savedCart => {
+                    const summaryText = generateInvoiceSummary(savedCart.cart);
+                    const isHidden = temporarilyHiddenInvoices.has(savedCart.id); // (جديد)
+                    
+                    const itemElement = document.createElement('div');
+                    itemElement.className = `flex flex-col sm:flex-row justify-between items-center p-3 border-b border-gray-200 last:border-b-0 gap-2 ${isHidden ? 'opacity-50 bg-gray-50' : ''}`; // (جديد)
+                    
+                    itemElement.innerHTML = `
+                        <div class="flex-1 min-w-0">
+                            <span class="font-semibold text-gray-800">فاتورة #${savedCart.id}</span>
+                            <span class="text-sm text-gray-500 block sm:inline sm:mr-2">${new Date(savedCart.date).toLocaleString('ar-EG')}</span>
+                            <p class="text-sm text-gray-600 break-words">${summaryText || '(فاتورة فارغة)'}</p>
+                        </div>
+                        <div class="flex items-center gap-3 flex-shrink-0">
+                            <span class="font-bold text-lg text-blue-600 w-24 text-left">${savedCart.total} ج</span>
+                            <button onclick="editInvoice(${savedCart.id})" class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-md text-sm hover:bg-yellow-200 transition-all">تعديل</button>
+                            <!-- (جديد) مفتاح التبديل للإخفاء -->
+                            <label class="toggle-switch" title="إخفاء/إظهار من الملخص">
+                                <input type="checkbox" ${!isHidden ? 'checked' : ''} onchange="toggleInvoiceVisibility(${savedCart.id}, !this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>`;
+                    inventoryListContainer.appendChild(itemElement);
+                });
+            }
+
+            // (جديد) إنشاء قائمة جديدة للملخص بناءً على الفواتير غير المخفية
+            const summaryCarts = filteredCarts.filter(c => !temporarilyHiddenInvoices.has(c.id));
+            calculateAndRenderInventorySummary(summaryCarts);
+        }
+
+        function generateInvoiceSummary(cartItems) {
+            const summary = {};
+            cartItems.forEach(item => {
+                if (item.isCase) {
+                    summary[item.name] = (summary[item.name] || 0) + 1;
+                } else {
+                    summary[item.name] = (summary[item.name] || 0) + item.quantity;
+                }
+            });
+            return Object.entries(summary)
+                         .map(([name, count]) => `${name} (x${count})`)
+                         .join(', ');
+        }
+
+        function editInvoice(id) {
+            const savedCarts = JSON.parse(localStorage.getItem('savedCarts')) || [];
+            const cartToEdit = savedCarts.find(c => c.id === id);
+
+            if (cartToEdit) {
+                cart = cartToEdit.cart;
+                editingInvoiceId = id;
+
+                saveButton.textContent = `تحديث الفاتورة #${id}`;
+                saveButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+                saveButton.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+
+                renderCart();
+                updateTotal();
+                persistCurrentCart();
+                showPage('receiving-page');
+            }
+        }
+
+        /**
+         * (تعديل) هذه الدالة الآن تستقبل الفواتير المفلترة وغير المخفية
+         */
+        function calculateAndRenderInventorySummary(summaryCarts) {
+            const summary = {
+                simpleItems: {}, complexItems: {}, components: {}
+            };
+            let totalRevenue = 0;
+
+            summaryCarts.forEach(savedCart => {
+                totalRevenue += parseFloat(savedCart.total);
+                savedCart.cart.forEach(item => {
+                    if (item.isCase) {
+                        summary.complexItems[item.name] = (summary.complexItems[item.name] || 0) + 1;
+                        Object.entries(item.components).forEach(([key, value]) => {
+                            if (value !== 0) {
+                                let partName = key;
+                                switch(key) {
+                                    case 'hardDrive': partName = 'هارد (مكون)'; break;
+                                    case 'ram': partName = 'رامات (مكون)'; break;
+                                    case 'cdRom': partName = 'سي دي (مكون)'; break;
+                                    case 'powerSupply': partName = 'باور (مكون)'; break;
+                                    case 'fan': partName = 'فانة (مكون)'; break;
+                                    case 'processor': partName = 'بروسيسور (مكون)'; break;
+                                    case 'battery': partName = 'بطارية (مكون)'; break;
+                                    case 'screen': partName = 'شاشة (مكون)'; break;
+                                }
+                                summary.components[partName] = (summary.components[partName] || 0) + value;
+                            }
+                        });
+                    } else {
+                        summary.simpleItems[item.name] = (summary.simpleItems[item.name] || 0) + item.quantity;
+                    }
+                });
+            });
+
+            inventorySummaryContainer.innerHTML = '';
+            
+            if (summaryCarts.length === 0) {
+                inventorySummaryContainer.innerHTML = '<p class="text-gray-500 col-span-full text-center">لا توجد بيانات لعرضها.</p>';
+                lastUpdatedDateElement.textContent = new Date().toLocaleString('ar-EG');
+                return;
+            }
+
+            inventorySummaryContainer.innerHTML += `
+                <div class="col-span-full bg-blue-50 p-4 rounded-lg border border-blue-200 text-center">
+                    <span class="block text-lg text-blue-700 font-medium">إجمالي الإيرادات (المفلترة)</span>
+                    <span class="block text-3xl font-bold text-blue-900">${totalRevenue.toFixed(2)} ج</span>
+                </div>`;
+
+            Object.entries(summary.complexItems).sort().forEach(([name, count]) => {
+                inventorySummaryContainer.innerHTML += `
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <span class="block text-sm text-gray-700 font-medium">${name}</span>
+                        <span class="block text-2xl font-bold text-gray-900">${count}</span>
+                    </div>`;
+            });
+            Object.entries(summary.simpleItems).sort().forEach(([name, count]) => {
+                inventorySummaryContainer.innerHTML += `
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <span class="block text-sm text-gray-700 font-medium">${name}</span>
+                        <span class="block text-2xl font-bold text-gray-900">${count}</span>
+                    </div>`;
+            });
+            Object.entries(summary.components).sort().forEach(([name, count]) => {
+                const color = count > 0 ? 'text-green-700' : 'text-red-700';
+                const countText = count > 0 ? `+${count}` : count;
+                inventorySummaryContainer.innerHTML += `
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <span class="block text-sm text-gray-700 font-medium">${name}</span>
+                        <span class="block text-2xl font-bold ${color}">${countText}</span>
+                    </div>`;
+            });
+
+            lastUpdatedDateElement.textContent = new Date().toLocaleString('ar-EG');
+        }
+
+
+        // --- بدء التشغيل (Initialization) ---
+        window.onload = () => {
+            // (تعديل) تم حذف loadSavedCarts() من هنا
+            renderCart(); 
+            updateTotal(); 
+
+            dateFromInput.addEventListener('change', renderInventoryList);
+            dateToInput.addEventListener('change', renderInventoryList);
+
+            showPage('home-page');
+        };
+
+    </script>
+
+</body>
+</html>
